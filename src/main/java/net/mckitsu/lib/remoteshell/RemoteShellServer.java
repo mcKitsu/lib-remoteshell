@@ -9,12 +9,14 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 public abstract class RemoteShellServer extends NetServer {
+
     /* **************************************************************************************
      *  Abstract method
      */
 
     protected abstract Map<String, TerminalCommand> getCommands();
     protected abstract Logger getLogger();
+    protected abstract boolean onVerifyToken(byte[] token);
 
     /* **************************************************************************************
      *  Construct method
@@ -39,6 +41,11 @@ public abstract class RemoteShellServer extends NetServer {
             @Override
             protected Logger getLogger() {
                 return RemoteShellServer.this.getLogger();
+            }
+
+            @Override
+            protected boolean onVerifyToken(byte[] token) {
+                return RemoteShellServer.this.onVerifyToken(token);
             }
         };
     }

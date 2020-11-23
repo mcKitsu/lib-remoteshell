@@ -9,7 +9,6 @@ import java.util.logging.Logger;
 
 public abstract class HandleSlotTerminal implements NetClientSlotEvent {
     private final NetClientSlot slot;
-    private boolean init = false;
 
     /* **************************************************************************************
      *  Abstract method
@@ -24,7 +23,6 @@ public abstract class HandleSlotTerminal implements NetClientSlotEvent {
     public HandleSlotTerminal(NetClientSlot netClientSlot){
         this.slot = netClientSlot;
         this.slot.event.setEvent(this);
-        this.slot.send("terminal".getBytes());
     }
 
     /* **************************************************************************************
@@ -33,22 +31,13 @@ public abstract class HandleSlotTerminal implements NetClientSlotEvent {
 
     @Override
     public void onReceiver(NetClientSlot netClientSlot) {
-        if(!this.init){
-            if(new String(netClientSlot.read()).equalsIgnoreCase("terminal")){
-                this.init = true;
-            }else{
-                netClientSlot.close();
-            }
-            return;
-        }
-
         while (!netClientSlot.isEmpty())
-            this.getTerminal().executeCommand(new String(netClientSlot.read(), StandardCharsets.UTF_8));
+            this.onRead(netClientSlot.read());
+
     }
 
     @Override
     public void onClose(NetClientSlot netClientSlot) {
-        System.out.println("SlotClose - terminal");
     }
 
     /* **************************************************************************************
@@ -66,4 +55,7 @@ public abstract class HandleSlotTerminal implements NetClientSlotEvent {
     /* **************************************************************************************
      *  Private method
      */
+    private void onRead(byte[] data){
+        this.getTerminal().executeCommand(new String(data, StandardCharsets.UTF_8));
+    }
 }

@@ -3,13 +3,17 @@ package net.mckitsu.lib.remoteshell.slot;
 import net.mckitsu.lib.network.net.NetClientSlot;
 import net.mckitsu.lib.network.net.NetClientSlotEvent;
 
-public class HandleSlotCommand implements NetClientSlotEvent {
+public abstract class HandleSlotCommand implements NetClientSlotEvent {
     private final NetClientSlot slot;
     private boolean init = false;
 
     /* **************************************************************************************
      *  Abstract method
      */
+
+    protected abstract void onVerifyToken(byte[] token);
+
+    protected abstract void onCommand(byte[] command);
 
     /* **************************************************************************************
      *  Construct method
@@ -26,27 +30,20 @@ public class HandleSlotCommand implements NetClientSlotEvent {
 
     @Override
     public void onReceiver(NetClientSlot netClientSlot) {
-        if(!this.init){
-            if(new String(netClientSlot.read()).equalsIgnoreCase("command")){
-                this.init = true;
-           }else{
-                netClientSlot.close();
-            }
-            return;
-        }
-
         while (!netClientSlot.isEmpty())
-                netClientSlot.read();
+            this.onRead(netClientSlot.read());
     }
 
     @Override
     public void onClose(NetClientSlot netClientSlot) {
-        System.out.println("SlotClose - Command");
     }
 
     /* **************************************************************************************
      *  Public method
      */
+        public void send(byte[] command){
+            this.slot.send(command);
+        }
 
     /* **************************************************************************************
      *  Protected method
@@ -55,4 +52,10 @@ public class HandleSlotCommand implements NetClientSlotEvent {
     /* **************************************************************************************
      *  Private method
      */
+    private void onRead(byte[] data){
+        if(!this.init){
+            this.init = true;
+            onVerifyToken(data);
+        }
+    }
 }

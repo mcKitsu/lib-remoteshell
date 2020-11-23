@@ -7,20 +7,22 @@ import java.util.logging.Logger;
 
 public abstract class SlotCommand implements NetClientSlotEvent {
     private final NetClientSlot slot;
-    private boolean init = false;
 
     /* **************************************************************************************
      *  Abstract method
      */
     protected abstract Logger getLogger();
 
+    protected abstract void onCommand(byte[] command);
+
 
     /* **************************************************************************************
      *  Construct method
      */
-    public SlotCommand(NetClientSlot netClientSlot){
+    public SlotCommand(NetClientSlot netClientSlot, byte[] token){
         this.slot = netClientSlot;
         this.slot.event.setEvent(this);
+        this.slot.send(token);
     }
 
     /* **************************************************************************************
@@ -50,14 +52,6 @@ public abstract class SlotCommand implements NetClientSlotEvent {
      *  Private method
      */
     private void onRead(byte[] data){
-        if(!this.init){
-            if(new String(data).equalsIgnoreCase("command")){
-                this.init = true;
-                slot.send("command".getBytes());
-            }else{
-                slot.close();
-            }
-        }
-
+        this.onCommand(data);
     }
 }

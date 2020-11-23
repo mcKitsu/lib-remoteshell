@@ -2,14 +2,12 @@ package net.mckitsu.lib.remoteshell.slot;
 
 import net.mckitsu.lib.network.net.NetClientSlot;
 import net.mckitsu.lib.network.net.NetClientSlotEvent;
-import net.mckitsu.lib.terminal.Terminal;
 
 import java.nio.charset.StandardCharsets;
 import java.util.logging.Logger;
 
 public abstract class SlotTerminal implements NetClientSlotEvent {
     private final NetClientSlot slot;
-    private boolean init = false;
 
     protected abstract Logger getLogger();
 
@@ -78,16 +76,6 @@ public abstract class SlotTerminal implements NetClientSlotEvent {
     }
 
     private void onRead(byte[] data){
-        if(!this.init){
-            if(new String(data).equalsIgnoreCase("terminal")){
-                this.init = true;
-                slot.send("terminal".getBytes());
-            }else{
-                slot.close();
-            }
-            return;
-        }
-
         this.logShow(new String(data, StandardCharsets.UTF_8));
     }
 }

@@ -1,5 +1,7 @@
 package net.mckitsu.lib.remoteshell;
 
+import lombok.Setter;
+import net.mckitsu.lib.network.net.EventHandler;
 import net.mckitsu.lib.network.net.NetClient;
 import net.mckitsu.lib.network.net.NetClientEvent;
 import net.mckitsu.lib.network.net.NetClientSlot;
@@ -9,15 +11,18 @@ import net.mckitsu.lib.terminal.Terminal;
 import net.mckitsu.lib.terminal.TerminalCommand;
 
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.logging.Handler;
 
 public abstract class RemoteShellHandle implements NetClientEvent{
+    public final Event event = new Event();
+
     private final Terminal terminal;
     private final Handler handler;
     private final HandleSlotCommand slotCommand;
-    private final HandleSlotTerminal slotTerminal;
+    private HandleSlotTerminal slotTerminal;
     private final NetClient netClient;
     private final Logger terminalLogger;
 
@@ -27,6 +32,8 @@ public abstract class RemoteShellHandle implements NetClientEvent{
     protected abstract Map<String, TerminalCommand> getCommands();
 
     protected abstract Logger getLogger();
+
+    protected abstract boolean onVerifyToken(byte[] token);
 
     /* **************************************************************************************
      *  Construct method
@@ -43,18 +50,7 @@ public abstract class RemoteShellHandle implements NetClientEvent{
         this.netClient = netClient;
         this.netClient.event.setEvent(this);
 
-        this.slotCommand = new HandleSlotCommand(netClient.openSlot());
-        this.slotTerminal = new HandleSlotTerminal(netClient.openSlot()) {
-            @Override
-            protected Logger getLogger() {
-                return RemoteShellHandle.this.terminalLogger;
-            }
-
-            @Override
-            protected Terminal getTerminal() {
-                return RemoteShellHandle.this.terminal;
-            }
-        };
+        this.slotCommand = constructHandleSlotCommand(netClient.openSlot());
 
         this.getLogger().info("RemoteShell: connect from " + netClient.getRemoteAddress());
     }
@@ -93,6 +89,9 @@ public abstract class RemoteShellHandle implements NetClientEvent{
     /* **************************************************************************************
      *  Public method
      */
+    public void sendCommand(byte[] command){
+        this.slotCommand.send(command);
+    }
 
     /* **************************************************************************************
      *  protected method
@@ -104,8 +103,7 @@ public abstract class RemoteShellHandle implements NetClientEvent{
     private Terminal constructTerminal(Map<String, TerminalCommand> commands, Logger logger){
         return new Terminal(commands, logger) {
             @Override
-            protected boolean onStart() {
-                return true;
+            protected void onStart() {
             }
 
             @Override
@@ -115,7 +113,6 @@ public abstract class RemoteShellHandle implements NetClientEvent{
 
             @Override
             protected void onUnknownCommand(String[] strings) {
-
             }
         };
     }
@@ -129,13 +126,63 @@ public abstract class RemoteShellHandle implements NetClientEvent{
 
             @Override
             public void flush() {
-
             }
 
             @Override
             public void close() throws SecurityException {
-
             }
         };
+    }
+
+    private HandleSlotCommand constructHandleSlotCommand(NetClientSlot netClientSlot){
+        return new HandleSlotCommand(netClientSlot) {
+            @Override
+            protected void onVerifyToken(byte[] token) {
+                if(RemoteShellHandle.this.onVerifyToken(token)){
+                    RemoteShellHandle.this.getLogger().info(
+                            "RemoteShell: verify success " + netClient.getRemoteAddress());
+                    //verify token successful, open terminal slot.
+                    RemoteShellHandle.this.slotTerminal =
+                            RemoteShellHandle.this.constructHandleSlotTerminal(
+                                    RemoteShellHandle.this.netClient.openSlot());
+                }else{
+                    RemoteShellHandle.this.getLogger().info(
+                            "RemoteShell: verify fail " + netClient.getRemoteAddress());
+                    //verify token fail, close session connect.
+                    RemoteShellHandle.this.netClient.disconnect();
+                }
+            }
+
+            @Override
+            protected void onCommand(byte[] command) {
+                RemoteShellHandle.this.event.onCommand(command);
+            }
+        };
+    }
+
+    private HandleSlotTerminal constructHandleSlotTerminal(NetClientSlot netClientSlot){
+        return new HandleSlotTerminal(netClientSlot) {
+            @Override
+            protected Logger getLogger() {
+                return RemoteShellHandle.this.terminalLogger;
+            }
+
+            @Override
+            protected Terminal getTerminal() {
+                return RemoteShellHandle.this.terminal;
+            }
+        };
+    }
+    /* **************************************************************************************
+     *  Class Event
+     */
+
+    @Setter
+    public static class Event extends EventHandler{
+        private Consumer<byte[]> onCommand;
+
+        protected void onCommand(byte[] command){
+            super.execute(this.onCommand, command);
+        }
     }
 }
