@@ -57,7 +57,7 @@
         <repository>
             <id>kitsu-repo</id>
             <name>GitHub mcKitsu Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/mcKitsu/lib-network/</url>
+            <url>https://maven.pkg.github.com/mcKitsu/lib-remoteShell/</url>
         </repository>
     </distributionManagement>
 </project>
