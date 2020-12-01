@@ -1,12 +1,12 @@
 package net.mckitsu.lib.remoteshell;
 
 import lombok.Setter;
-import net.mckitsu.lib.network.net.EventHandler;
 import net.mckitsu.lib.network.net.NetClient;
 import net.mckitsu.lib.network.net.NetClientEvent;
 import net.mckitsu.lib.network.net.NetClientSlot;
 import net.mckitsu.lib.remoteshell.slot.SlotCommand;
 import net.mckitsu.lib.remoteshell.slot.SlotTerminal;
+import net.mckitsu.lib.util.EventHandler;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -164,7 +164,7 @@ public class RemoteShell implements NetClientEvent {
      */
 
     @Setter
-    public static class Event extends EventHandler{
+    public static class Event extends EventHandler {
         private Consumer<byte[]> onCommand;
         private Consumer<RemoteShell> onConnect;
         private Consumer<RemoteShell> onDisconnect;

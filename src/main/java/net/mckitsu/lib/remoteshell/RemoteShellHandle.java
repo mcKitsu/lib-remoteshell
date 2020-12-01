@@ -1,7 +1,7 @@
 package net.mckitsu.lib.remoteshell;
 
 import lombok.Setter;
-import net.mckitsu.lib.network.net.EventHandler;
+import net.mckitsu.lib.util.EventHandler;
 import net.mckitsu.lib.network.net.NetClient;
 import net.mckitsu.lib.network.net.NetClientEvent;
 import net.mckitsu.lib.network.net.NetClientSlot;
@@ -10,6 +10,8 @@ import net.mckitsu.lib.remoteshell.slot.HandleSlotTerminal;
 import net.mckitsu.lib.terminal.Terminal;
 import net.mckitsu.lib.terminal.TerminalCommand;
 
+import java.net.SocketAddress;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.logging.LogRecord;
@@ -19,6 +21,7 @@ import java.util.logging.Handler;
 public abstract class RemoteShellHandle implements NetClientEvent{
     public final Event event = new Event();
 
+    private Map<String, TerminalCommand> commands = new HashMap<>();
     private final Terminal terminal;
     private final Handler handler;
     private final HandleSlotCommand slotCommand;
@@ -29,9 +32,6 @@ public abstract class RemoteShellHandle implements NetClientEvent{
     /* **************************************************************************************
      *  Abstract method
      */
-    protected abstract Map<String, TerminalCommand> getCommands();
-
-    protected abstract Logger getLogger();
 
     protected abstract boolean onVerifyToken(byte[] token);
 
@@ -45,14 +45,12 @@ public abstract class RemoteShellHandle implements NetClientEvent{
         this.handler = constructHandle();
         this.terminalLogger.addHandler(handler);
 
-        this.terminal = constructTerminal(getCommands(), terminalLogger);
+        this.terminal = constructTerminal(commands, terminalLogger);
 
         this.netClient = netClient;
         this.netClient.event.setEvent(this);
 
         this.slotCommand = constructHandleSlotCommand(netClient.openSlot());
-
-        this.getLogger().info("RemoteShell: connect from " + netClient.getRemoteAddress());
     }
 
     /* **************************************************************************************
@@ -93,18 +91,25 @@ public abstract class RemoteShellHandle implements NetClientEvent{
         this.slotCommand.send(command);
     }
 
+    public SocketAddress getRemoteAddress(){
+        return netClient.getRemoteAddress();
+    }
+
     /* **************************************************************************************
      *  protected method
      */
+    protected void setCommands(Map<String, TerminalCommand> commands){
+        this.commands = commands;
+    }
 
     /* **************************************************************************************
      *  Private method
      */
     private Terminal constructTerminal(Map<String, TerminalCommand> commands, Logger logger){
         return new Terminal(commands, logger) {
+
             @Override
-            protected void onStart() {
-            }
+            protected void onStart() {}
 
             @Override
             protected String onRead() {
@@ -139,16 +144,10 @@ public abstract class RemoteShellHandle implements NetClientEvent{
             @Override
             protected void onVerifyToken(byte[] token) {
                 if(RemoteShellHandle.this.onVerifyToken(token)){
-                    RemoteShellHandle.this.getLogger().info(
-                            "RemoteShell: verify success " + netClient.getRemoteAddress());
-                    //verify token successful, open terminal slot.
                     RemoteShellHandle.this.slotTerminal =
                             RemoteShellHandle.this.constructHandleSlotTerminal(
                                     RemoteShellHandle.this.netClient.openSlot());
                 }else{
-                    RemoteShellHandle.this.getLogger().info(
-                            "RemoteShell: verify fail " + netClient.getRemoteAddress());
-                    //verify token fail, close session connect.
                     RemoteShellHandle.this.netClient.disconnect();
                 }
             }
